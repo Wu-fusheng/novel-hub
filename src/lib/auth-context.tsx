@@ -14,16 +14,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<UserMode>('guest')
   const [isLoading, setIsLoading] = useState(true)
 
-  const supabase = createClient()
-
   const loadProfile = useCallback(async (userId: string) => {
+    const supabase = createClient()
     const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
     return data as Profile | null
-  }, [supabase])
+  }, [])
 
   const determineMode = useCallback((p: Profile | null): UserMode => {
     if (p?.role === 'admin') return 'admin'
@@ -33,11 +32,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    const supabase = createClient()
     const initAuth = async () => {
       // Check localStorage for guest preference first
       const savedMode = typeof window !== 'undefined' ? localStorage.getItem(MODE_KEY) : null
 
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      // Try getUser first, fallback to getSession (getUser can return null when middleware refreshes tokens)
+      let authUser = null
+      const { data: { user: getUserResult } } = await supabase.auth.getUser()
+      if (getUserResult) {
+        authUser = getUserResult
+      } else {
+        const { data: { session } } = await supabase.auth.getSession()
+        authUser = session?.user || null
+      }
 
       if (authUser) {
         setUser(authUser)
@@ -58,12 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
-        const { data: { user: authUser } } = await supabase.auth.getUser()
-        if (authUser) {
-          setUser(authUser)
-          const p = await loadProfile(authUser.id)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Handle all auth state changes, not just SIGNED_IN/SIGNED_OUT
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        const authUserData = session?.user || null
+        if (authUserData) {
+          setUser(authUserData)
+          const p = await loadProfile(authUserData.id)
           setProfile(p)
           const m = determineMode(p)
           setModeState(m)
@@ -85,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase, loadProfile, determineMode])
+  }, [loadProfile, determineMode])
 
   const setMode = useCallback((newMode: UserMode) => {
     setModeState(newMode)
@@ -96,7 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     setIsLoading(true)
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const supabase = createClient()
+    // Try getUser first, fallback to getSession
+    let authUser = null
+    const { data: { user: getUserResult } } = await supabase.auth.getUser()
+    if (getUserResult) {
+      authUser = getUserResult
+    } else {
+      const { data: { session } } = await supabase.auth.getSession()
+      authUser = session?.user || null
+    }
     if (authUser) {
       setUser(authUser)
       const p = await loadProfile(authUser.id)
@@ -109,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setModeState('guest')
     }
     setIsLoading(false)
-  }, [supabase, loadProfile, determineMode])
+  }, [loadProfile, determineMode])
 
   return (
     <AuthContext.Provider value={{ user, profile, mode, isLoading, setMode, refresh }}>

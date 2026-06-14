@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getChapterComments, createComment, deleteComment, getCurrentUser, isNovelAuthor } from '@/lib/api/comments'
+import { getChapterComments, createComment, deleteComment, isNovelAuthor } from '@/lib/api/comments'
+import { useAuth } from '@/lib/auth-context'
 import type { Comment } from '@/lib/types'
 
 interface CommentsPanelProps {
@@ -10,9 +11,9 @@ interface CommentsPanelProps {
 }
 
 export default function CommentsPanel({ chapterId, novelId }: CommentsPanelProps) {
+  const { user: authUser, profile: authProfile } = useAuth()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAuthor, setIsAuthor] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
@@ -20,15 +21,16 @@ export default function CommentsPanel({ chapterId, novelId }: CommentsPanelProps
   const [replyTo, setReplyTo] = useState<Comment | null>(null)
   const [error, setError] = useState('')
 
+  // Derive currentUser from auth context
+  const currentUser = authUser ? { ...authUser, profile: authProfile } : null
+
   const loadComments = useCallback(async () => {
     setLoading(true)
-    const [commentsData, userData, authorStatus] = await Promise.all([
+    const [commentsData, authorStatus] = await Promise.all([
       getChapterComments(chapterId),
-      getCurrentUser(),
       isNovelAuthor(novelId),
     ])
     setComments(commentsData)
-    setCurrentUser(userData)
     setIsAuthor(authorStatus)
     setLoading(false)
   }, [chapterId, novelId])

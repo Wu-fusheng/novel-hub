@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import CommentsPanel from './comments-panel'
 import AnnotationPopup from './annotation-popup'
 import ChapterRating from './chapter-rating'
 import UrgeButton from './urge-button'
-import { getCurrentUser } from '@/lib/api/comments'
 import { recordChapterRead } from '@/lib/api/engagement'
 import { useReadingSettings } from '@/lib/hooks/use-reading-settings'
 import { useReadingProgress } from '@/lib/hooks/use-reading-progress'
@@ -30,17 +30,17 @@ export default function ChapterReaderClient({
   novelId: string
 }) {
   const router = useRouter()
+  const { user: authUser } = useAuth()
   const { settings, updateSettings, loaded } = useReadingSettings()
   const { progress, readingTime, formatReadingTime } = useReadingProgress()
   const [showSidebar, setShowSidebar] = useState(false)
   const [showAnnotationPopup, setShowAnnotationPopup] = useState(false)
   const [selectedText, setSelectedText] = useState('')
   const [annotationRange, setAnnotationRange] = useState({ start: 0, end: 0 })
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [refreshComments, setRefreshComments] = useState(0)
   const [showSettings, setShowSettings] = useState(false)
 
-  // Update reading progress, record read, and get current user
+  // Update reading progress and record read
   useEffect(() => {
     const updateProgress = async () => {
       const supabase = createClient()
@@ -57,12 +57,6 @@ export default function ChapterReaderClient({
       }
     }
     updateProgress()
-
-    const fetchUser = async () => {
-      const user = await getCurrentUser()
-      setCurrentUser(user)
-    }
-    fetchUser()
   }, [chapter.id, novelId])
 
   // Keyboard shortcuts
@@ -322,7 +316,7 @@ export default function ChapterReaderClient({
             ))}
 
             {/* Text selection hint */}
-            {currentUser && (
+            {authUser && (
               <div className="absolute -top-6 right-0 text-xs text-gray-400 italic">
                 选中文字可添加批注
               </div>

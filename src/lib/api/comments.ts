@@ -105,10 +105,12 @@ export async function deleteComment(commentId: string): Promise<void> {
   }
 }
 
-// Get current user
+// Get current user - uses getSession for reliability (getUser can return null when middleware refreshes tokens)
 export async function getCurrentUser() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Try getSession first (more reliable for client-side)
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
   if (!user) return null
 
   const { data: profile } = await supabase

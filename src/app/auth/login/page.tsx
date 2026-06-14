@@ -48,9 +48,17 @@ export default function LoginPage() {
                   email: trimmedEmail,
                   role: 'author',
                 },
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
               },
             })
             if (signUpError) throw signUpError
+
+            // signUp 不会自动登录，需要手动登录
+            const loginResult = await supabase.auth.signInWithPassword({
+              email: trimmedEmail,
+              password,
+            })
+            if (loginResult.error) throw loginResult.error
           } else {
             throw signInError
           }
@@ -67,20 +75,66 @@ export default function LoginPage() {
           throw new Error('授权密码错误，请联系开发者获取访问权限')
         }
 
-        // 读者使用固定邮箱格式登录（使用合法邮箱格式避免 Supabase 验证失败）
+        // 读者使用固定邮箱格式登录
+        // 策略：先通过 profiles 表查找用户名对应的 auth 用户邮箱，再用邮箱登录
+        // 这样可以处理 username 被添加后缀（如 _1, _2）的情况
         const safeUsername = trimmedUsername.replace(/[^a-zA-Z0-9_-]/g, '_')
-        const readerEmail = `reader_${safeUsername}@mail.novelhub.app`
 
-        // 先尝试登录，如果不存在则自动注册
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: readerEmail,
-          password: trimmedAuthCode,
-        })
+        // 尝试多种邮箱格式
+        const emailCandidates = [
+          `reader_${safeUsername}@mail.novelhub.app`,
+          `reader_${safeUsername}@novelhub.local`,
+        ]
 
-        if (signInError) {
-          // 用户不存在，自动注册
+        // 同时通过 profiles 表查找可能匹配的用户（处理 username 后缀情况）
+        const { data: matchingProfiles } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .like('username', `${trimmedUsername}%`)
+          .limit(5)
+
+        if (matchingProfiles && matchingProfiles.length > 0) {
+          // 通过 auth admin API 获取这些用户的实际邮箱
+          for (const profile of matchingProfiles) {
+            try {
+              // 尝试用 getUser 获取用户信息（需要已登录，这里用另一种方式）
+              // 直接尝试常见的邮箱格式组合
+              const profileSafe = profile.username.replace(/[^a-zA-Z0-9_-]/g, '_')
+              const candidateEmails = [
+                `reader_${profileSafe}@mail.novelhub.app`,
+                `reader_${profileSafe}@novelhub.local`,
+              ]
+              for (const email of candidateEmails) {
+                if (!emailCandidates.includes(email)) {
+                  emailCandidates.push(email)
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        let loggedIn = false
+
+        // 依次尝试所有候选邮箱
+        for (const candidateEmail of emailCandidates) {
+          const signInResult = await supabase.auth.signInWithPassword({
+            email: candidateEmail,
+            password: trimmedAuthCode,
+          })
+
+          if (!signInResult.error && signInResult.data.session) {
+            loggedIn = true
+            break
+          }
+        }
+
+        // 所有候选邮箱都失败，尝试注册新用户
+        if (!loggedIn) {
+          const newReaderEmail = emailCandidates[0]
           const { error: signUpError } = await supabase.auth.signUp({
-            email: readerEmail,
+            email: newReaderEmail,
             password: trimmedAuthCode,
             options: {
               data: {
@@ -88,9 +142,17 @@ export default function LoginPage() {
                 display_name: trimmedUsername,
                 role: 'reader',
               },
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
             },
           })
           if (signUpError) throw signUpError
+
+          // signUp 不会自动登录，需要手动登录
+          const loginResult = await supabase.auth.signInWithPassword({
+            email: newReaderEmail,
+            password: trimmedAuthCode,
+          })
+          if (loginResult.error) throw loginResult.error
         }
       }
 
