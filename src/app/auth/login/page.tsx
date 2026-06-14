@@ -67,8 +67,9 @@ export default function LoginPage() {
           throw new Error('授权密码错误，请联系开发者获取访问权限')
         }
 
-        // 读者使用固定邮箱格式登录
-        const readerEmail = `reader_${trimmedUsername}@novelhub.local`
+        // 读者使用固定邮箱格式登录（使用合法邮箱格式避免 Supabase 验证失败）
+        const safeUsername = trimmedUsername.replace(/[^a-zA-Z0-9_-]/g, '_')
+        const readerEmail = `reader_${safeUsername}@mail.novelhub.app`
 
         // 先尝试登录，如果不存在则自动注册
         const { error: signInError } = await supabase.auth.signInWithPassword({
