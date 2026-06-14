@@ -1,0 +1,88 @@
+name: Deploy to Netlify
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: 6156c832-2272-4530-9365-a0b0d4ac4183
+      NEXT_PUBLIC_SUPABASE_URL: https://wabpertseaioybihvegs.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhYnBlcnRzZWFpb3liaWh2ZWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTg3MjEsImV4cCI6MjA5NTc3NDcyMX0.BIZEZJ-n7JMx3gAMws9lD22UJ5TucTeUDdUoY-ikpUA
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhYnBlcnRzZWFpb3liaWh2ZWdzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE5ODcyMSwiZXhwIjoyMDk1Nzc0NzIxfQ.QawxUo1aWIZOmOpm8y5xkQcllYosIqztHB_lWOhBrVM
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
+      - name: Update Netlify UI env vars with correct values
+        run: |
+          SITE_ID="6156c832-2272-4530-9365-a0b0d4ac4183"
+          CORRECT_URL="https://wabpertseaioybihvegs.supabase.co"
+          CORRECT_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhYnBlcnRzZWFpb3liaWh2ZWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTg3MjEsImV4cCI6MjA5NTc3NDcyMX0.BIZEZJ-n7JMx3gAMws9lD22UJ5TucTeUDdUoY-ikpUA"
+          CORRECT_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhYnBlcnRzZWFpb3liaWh2ZWdzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE5ODcyMSwiZXhwIjoyMDk1Nzc0NzIxfQ.QawxUo1aWIZOmOpm8y5xkQcllYosIqztHB_lWOhBrVM"
+          # Fetch existing env vars and update their values via PATCH
+          ENV_VARS=$(curl -s "https://api.netlify.com/api/v1/sites/$SITE_ID/env" \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN")
+          echo "Existing env vars: $ENV_VARS"
+          echo "$ENV_VARS" | python3 -c "
+          import json, sys, subprocess, os
+
+          vars = json.load(sys.stdin)
+          site_id = os.environ.get('SITE_ID', '')
+          token = os.environ.get('NETLIFY_AUTH_TOKEN', '')
+          correct_url = os.environ.get('CORRECT_URL', '')
+          correct_anon = os.environ.get('CORRECT_ANON_KEY', '')
+          correct_service = os.environ.get('CORRECT_SERVICE_KEY', '')
+
+          value_map = {
+              'NEXT_PUBLIC_SUPABASE_URL': correct_url,
+              'NEXT_PUBLIC_SUPABASE_ANON_KEY': correct_anon,
+              'SUPABASE_SERVICE_ROLE_KEY': correct_service,
+          }
+
+          for v in vars:
+              key = v.get('key', '')
+              if key in value_map:
+                  vid = v.get('id', '')
+                  correct_value = value_map[key]
+                  print(f'Updating {key} (id={vid})')
+                  # Use PATCH to update the env var value
+                  contexts = v.get('contexts', [])
+                  payload = {
+                      'key': key,
+                      'value': correct_value,
+                      'contexts': contexts
+                  }
+                  result = subprocess.run([
+                      'curl', '-s', '-X', 'PATCH',
+                      f'https://api.netlify.com/api/v1/sites/{site_id}/env/{vid}',
+                      '-H', 'Authorization: Bearer ' + token,
+                      '-H', 'Content-Type: application/json',
+                      '-d', json.dumps(payload)
+                  ], capture_output=True, text=True)
+                  print(f'Response: {result.stdout}')
+                  if result.stderr:
+                      print(f'Error: {result.stderr}')
+          "
+
+      - name: Build and deploy to Netlify
+        run: netlify deploy --build --prod
