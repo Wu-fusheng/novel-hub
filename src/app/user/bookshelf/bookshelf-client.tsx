@@ -96,7 +96,7 @@ export default function BookshelfClient({ bookshelf }: BookshelfClientProps) {
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-gray-800 truncate">{item.novel?.title || '未知小说'}</h3>
               <p className="text-sm text-gray-500 mt-0.5">
-                {item.novel?.profiles?.display_name || '匿名作者'}
+                {item.novel?.author?.display_name || item.novel?.profiles?.display_name || '匿名作者'}
               </p>
               <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                 {item.chapter && (

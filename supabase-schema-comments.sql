@@ -124,6 +124,7 @@ RETURNS TABLE (
   parent_id UUID,
   reply_to_user_id UUID,
   is_deleted BOOLEAN,
+  is_author_note BOOLEAN,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ,
   username TEXT,
@@ -147,6 +148,7 @@ BEGIN
     c.parent_id,
     c.reply_to_user_id,
     c.is_deleted,
+    c.is_author_note,
     c.created_at,
     c.updated_at,
     p.username,
@@ -169,6 +171,7 @@ BEGIN
       OR n.author_id = p_user_id
     )
   ORDER BY 
+    c.is_author_note DESC,
     CASE WHEN c.parent_id IS NULL THEN c.created_at END DESC,
     c.parent_id NULLS FIRST,
     c.created_at ASC;

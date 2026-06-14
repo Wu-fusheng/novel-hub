@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -11,11 +11,19 @@ function NewChapterForm({ novelId }: { novelId: string }) {
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [chapterNumber, setChapterNumber] = useState(parseInt(searchParams.get('number') || '1'))
+  const [chapterNumber, setChapterNumber] = useState(1)
   const [isPublished, setIsPublished] = useState(false)
   const [authorNote, setAuthorNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Initialize chapter number from search params
+  useEffect(() => {
+    const num = searchParams.get('number')
+    if (num) {
+      setChapterNumber(parseInt(num) || 1)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 
@@ -14,6 +14,7 @@ export default function EditChapterPage() {
   const [content, setContent] = useState('')
   const [chapterNumber, setChapterNumber] = useState(1)
   const [isPublished, setIsPublished] = useState(false)
+  const [authorNote, setAuthorNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +33,7 @@ export default function EditChapterPage() {
         setContent(data.content)
         setChapterNumber(data.chapter_number)
         setIsPublished(data.is_published)
+        setAuthorNote(data.author_note || '')
       }
       setLoading(false)
     }
@@ -53,6 +55,7 @@ export default function EditChapterPage() {
         chapter_number: chapterNumber,
         word_count: wordCount,
         is_published: isPublished,
+        author_note: authorNote.trim() || null,
       }).eq('id', chapterId)
 
       if (error) throw error
@@ -107,6 +110,17 @@ export default function EditChapterPage() {
           <p className="text-xs text-gray-400 mt-1">
             当前字数：{content.replace(/\s/g, '').length}
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">作者有话说</label>
+          <textarea
+            value={authorNote}
+            onChange={(e) => setAuthorNote(e.target.value)}
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-gray-800 resize-y"
+            placeholder="写点什么给读者看吧（可选，将显示在评论区顶部）"
+          />
         </div>
 
         <div className="flex items-center space-x-3">
