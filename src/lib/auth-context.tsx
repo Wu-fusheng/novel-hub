@@ -111,12 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const restored = restoreFromStorage()
       if (restored) {
         setIsLoading(false)
-        // Best-effort background sync with Supabase SDK
-        supabase.auth.setSession({
-          access_token: getStoredAuth()!.access_token,
-          refresh_token: getStoredAuth()!.refresh_token,
-        }).catch(() => {})
-        // Also try to refresh profile from server in background
+        // NOTE: We intentionally do NOT call supabase.auth.setSession() here.
+        // setSession() may trigger network validation which can fail and emit
+        // SIGNED_OUT, causing our localStorage state to be wiped unexpectedly.
+        // Auth state is fully managed via localStorage + React context.
+        // Background profile refresh only - no Supabase SDK session sync
         loadProfile(getStoredAuth()!.user.id).then((p) => {
           if (p) {
             setProfile(p)
@@ -195,12 +194,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setProfile(null)
-        setModeState('guest')
-        setStoredAuth(null)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(MODE_KEY)
+        // Defensive check: if localStorage still has auth data, this SIGNED_OUT
+        // was likely triggered by SDK internals (e.g. setSession validation
+        // failure) rather than an intentional user logout. Re-inject the stored
+        // auth to prevent accidental logout.
+        const stored = getStoredAuth()
+        if (stored && stored.user) {
+          setUser(stored.user)
+          setProfile(stored.profile)
+          const m = determineMode(stored.profile)
+          setModeState(m)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(MODE_KEY, m)
+          }
+        } else {
+          // Genuine logout - clear everything
+          setUser(null)
+          setProfile(null)
+          setModeState('guest')
+          setStoredAuth(null)
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(MODE_KEY)
+          }
         }
       }
       setIsLoading(false)

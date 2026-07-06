@@ -20,6 +20,13 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Pro
   ])
 }
 
+// Debug helper
+function debugLog(...args: any[]) {
+  if (typeof window !== 'undefined') {
+    console.log('[Login]', ...args)
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const { injectAuth } = useAuth()
@@ -40,6 +47,7 @@ export default function LoginPage() {
       if (loginType === 'author') {
         // 作者登录：通过 API 代理请求 Supabase（自动注册新用户）
         const trimmedEmail = email.trim()
+        debugLog('作者登录开始', trimmedEmail)
         const res = await withTimeout(
           fetch('/api/auth/login', {
             method: 'POST',
@@ -52,10 +60,11 @@ export default function LoginPage() {
             }),
             credentials: 'include',
           }),
-          15000,
+          25000,
           '作者登录'
         )
         const data = await res.json()
+        debugLog('作者登录响应', data.success, data.user?.id)
         if (!data.success || !data.session || !data.user) {
           throw new Error(data.error || '作者登录失败')
         }
@@ -89,6 +98,8 @@ export default function LoginPage() {
           `reader_${safeUsername}_2@novelhub.local`,
         ]
 
+        debugLog('读者登录开始', trimmedUsername, '候选邮箱数', emailCandidates.length)
+
         // 通过 API 代理进行登录的辅助函数
         // 返回 session tokens、user 和 profile 以便前端注入到 AuthContext
         const proxyLogin = async (candidateEmail: string): Promise<{
@@ -99,6 +110,7 @@ export default function LoginPage() {
           profile?: any
         }> => {
           try {
+            debugLog('尝试邮箱', candidateEmail)
             const res = await withTimeout(
               fetch('/api/auth/login', {
                 method: 'POST',
@@ -106,15 +118,17 @@ export default function LoginPage() {
                 body: JSON.stringify({ email: candidateEmail, password: trimmedAuthCode }),
                 credentials: 'include',
               }),
-              12000,
+              25000,
               '读者登录'
             )
             const data = await res.json()
+            debugLog('邮箱响应', candidateEmail, data.success)
             if (data.success && data.session) {
               return { success: true, session: data.session, user: data.user, profile: data.profile }
             }
             return { success: false, error: data.error || '登录失败' }
           } catch (err) {
+            debugLog('邮箱错误', candidateEmail, err instanceof Error ? err.message : '请求失败')
             return { success: false, error: err instanceof Error ? err.message : '请求失败' }
           }
         }
@@ -138,6 +152,7 @@ export default function LoginPage() {
 
         // 所有候选邮箱都失败，尝试通过 API 代理注册新用户
         if (!loggedIn) {
+          debugLog('所有候选邮箱失败，尝试注册')
           const newReaderEmail = emailCandidates[0]
           const registerRes = await withTimeout(
             fetch('/api/auth/login', {
@@ -155,10 +170,11 @@ export default function LoginPage() {
               }),
               credentials: 'include',
             }),
-            15000,
+            25000,
             '读者注册'
           )
           const registerData = await registerRes.json()
+          debugLog('注册响应', registerData.success, registerData.user?.id)
           if (!registerData.success || !registerData.session || !registerData.user) {
             throw new Error(`登录失败：${lastError || registerData.error || '注册失败'}`)
           }

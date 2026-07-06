@@ -43,14 +43,17 @@ export default function Navbar() {
   }, [user])
 
   const handleLogout = async () => {
+    // Clear localStorage FIRST so that the SIGNED_OUT event handler
+    // in auth-context can distinguish intentional logout from SDK errors
+    localStorage.removeItem('novel-hub-auth')
+    localStorage.removeItem('novel-hub-mode')
+
     const supabase = createClient()
     try {
       await supabase.auth.signOut()
     } catch {
-      // Network error - clear auth data locally
-      localStorage.removeItem('novel-hub-auth')
+      // Network error - already cleared above
     }
-    localStorage.removeItem('novel-hub-mode')
     router.push('/')
     router.refresh()
   }
