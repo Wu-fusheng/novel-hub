@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { DeleteNovelButton } from './actions'
+import { DeleteNovelButton, UnpublishNovelButton } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +17,23 @@ export default async function AdminNovelsPage() {
     .select('*, chapters(count)')
     .eq('author_id', user.id)
     .order('updated_at', { ascending: false })
+
+  // Fetch stats for each novel
+  const novelStats: Record<string, { reads: number; comments: number; urges: number }> = {}
+  if (novels) {
+    for (const novel of novels) {
+      const [{ count: readCount }, { count: commentCount }, { count: urgeCount }] = await Promise.all([
+        supabase.from('chapter_reads').select('*', { count: 'exact', head: true }).eq('novel_id', novel.id),
+        supabase.from('comments').select('*', { count: 'exact', head: true }).eq('novel_id', novel.id).is('parent_id', null),
+        supabase.from('urges').select('*', { count: 'exact', head: true }).eq('novel_id', novel.id),
+      ])
+      novelStats[novel.id] = {
+        reads: readCount || 0,
+        comments: commentCount || 0,
+        urges: urgeCount || 0,
+      }
+    }
+  }
 
   return (
     <div>
@@ -39,12 +56,26 @@ export default async function AdminNovelsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">章节数</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">发布</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">
+                  <span className="hidden lg:inline">阅读量</span>
+                  <span className="lg:hidden">读</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">
+                  <span className="hidden lg:inline">评论数</span>
+                  <span className="lg:hidden">评</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">
+                  <span className="hidden lg:inline">催更</span>
+                  <span className="lg:hidden">催</span>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">更新时间</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {novels.map((novel: any) => (
+              {novels.map((novel: any) => {
+                  const stats = novelStats[novel.id] || { reads: 0, comments: 0, urges: 0 }
+                  return (
                 <tr key={novel.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="font-medium text-gray-800">{novel.title}</div>
@@ -71,10 +102,13 @@ export default async function AdminNovelsPage() {
                       {novel.is_published ? '已发布' : '草稿'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 text-center">{stats.reads}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 text-center">{stats.comments}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 text-center">{stats.urges}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(novel.updated_at).toLocaleDateString('zh-CN')}
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
+                  <td className="px-6 py-4 text-right">
                     <Link
                       href={`/admin/novels/${novel.id}`}
                       className="text-amber-600 hover:text-amber-700 text-sm font-medium"
@@ -82,15 +116,33 @@ export default async function AdminNovelsPage() {
                       编辑
                     </Link>
                     <Link
+                      href={`/admin/novels/${novel.id}/stats`}
+                      className="text-gray-400 hover:text-gray-600 text-sm font-medium ml-3"
+                      title="数据统计"
+                    >
+                      📊
+                    </Link>
+                    <Link
+                      href={`/admin/novels/${novel.id}/comments`}
+                      className="text-gray-400 hover:text-gray-600 text-sm font-medium ml-2"
+                      title="留言管理"
+                    >
+                      💬
+                    </Link>
+                    <Link
                       href={`/novel/${novel.id}`}
                       className="text-blue-600 hover:text-blue-700 text-sm font-medium ml-3"
                     >
                       预览
                     </Link>
+                    {novel.is_published && (
+                      <UnpublishNovelButton novelId={novel.id} novelTitle={novel.title} />
+                    )}
                     <DeleteNovelButton novelId={novel.id} novelTitle={novel.title} />
                   </td>
                 </tr>
-              ))}
+                  )
+                })}
             </tbody>
           </table>
         </div>

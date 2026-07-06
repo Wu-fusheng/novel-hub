@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/supabase/client'
+import ConfirmModal from './ConfirmModal'
 
 export default function Navbar() {
   const router = useRouter()
   const { user, profile, mode, isLoading, setMode } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   const isLoggedIn = !!user
   const isAuthor = mode === 'author' || mode === 'admin'
@@ -133,7 +135,7 @@ export default function Navbar() {
                   </span>
                 </div>
                 <button
-                  onClick={handleLogout}
+                  onClick={() => setShowLogoutModal(true)}
                   className="px-3 py-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
                 >
                   退出
@@ -217,6 +219,17 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Logout Confirm Modal */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        title="退出登录"
+        message="确定要退出登录吗？"
+        confirmText="确认退出"
+        cancelText="取消"
+      />
     </nav>
   )
 }

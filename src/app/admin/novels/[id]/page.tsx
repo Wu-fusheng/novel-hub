@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import NovelEditorClient from './client'
+import DeleteChapterButton from './chapters/actions'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -115,6 +116,7 @@ function ChapterRow({ chapter, novelId }: { chapter: any; novelId: string }) {
         >
           编辑
         </a>
+        <DeleteChapterButton chapterId={chapter.id} chapterTitle={chapter.title} />
       </div>
     </div>
   )

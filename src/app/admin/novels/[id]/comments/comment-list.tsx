@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface CommentItem {
   id: string
@@ -29,6 +30,25 @@ export default function AdminCommentList({ comments, novelId }: AdminCommentList
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [localComments, setLocalComments] = useState(comments)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; preview: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', deleteTarget.id)
+    if (!error) {
+      setLocalComments(prev => prev.filter(c => c.id !== deleteTarget.id))
+    } else {
+      alert('删除失败: ' + error.message)
+    }
+    setDeleteTarget(null)
+    setDeleting(false)
+  }
 
   const handleReply = async (commentId: string, chapterId: string | null) => {
     if (!replyContent.trim()) return
@@ -138,9 +158,7 @@ export default function AdminCommentList({ comments, novelId }: AdminCommentList
 
           <p className="mt-3 text-gray-700 text-sm leading-relaxed">{comment.content}</p>
 
-          {/* Reply button */}
-          <div className="mt-4">
-            {replyingTo === comment.id ? (
+                {replyingTo === comment.id ? (
               <div className="space-y-3">
                 <textarea
                   value={replyContent}
@@ -170,16 +188,34 @@ export default function AdminCommentList({ comments, novelId }: AdminCommentList
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => setReplyingTo(comment.id)}
-                className="text-sm text-amber-600 hover:text-amber-700 font-medium"
-              >
-                回复这条留言
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setReplyingTo(comment.id)}
+                  className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                >
+                  回复
+                </button>
+                <button
+                  onClick={() => setDeleteTarget({ id: comment.id, preview: comment.content.substring(0, 30) })}
+                  className="text-sm text-red-500 hover:text-red-700 font-medium"
+                >
+                  删除
+                </button>
+              </div>
             )}
           </div>
-        </div>
       ))}
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="删除留言"
+        message={`确定要删除这条留言吗？${deleteTarget?.preview && deleteTarget.preview.length > 0 ? ` 预览：${deleteTarget.preview}...` : ''}`}
+        confirmText="确认删除"
+        cancelText="取消"
+      />
     </div>
   )
 }

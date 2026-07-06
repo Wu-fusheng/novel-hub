@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const navItems = [
   { href: '/user/bookshelf', label: '书架', icon: '📚' },
   { href: '/user/notifications', label: '消息', icon: '🔔' },
+  { href: '/user/settings', label: '设置', icon: '⚙️' },
 ]
 
 export default function UserNavClient() {

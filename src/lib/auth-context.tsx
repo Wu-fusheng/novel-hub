@@ -275,13 +275,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authUser = session?.user || null
     }
     if (!authUser) {
-        const { data: { session } } = await supabase.auth.getSession()
-        authUser = session?.user || null
-      }
-      if (!authUser) {
-        const stored = getStoredAuth()
-        if (stored?.user) authUser = stored.user
-      }
+      const stored = getStoredAuth()
+      if (stored?.user) authUser = stored.user
+    }
     if (authUser) {
       setUser(authUser)
       let p: Profile | null = null
@@ -303,8 +299,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [loadProfile, determineMode])
 
+  // Update profile locally and sync to localStorage + database
+  const updateProfile = useCallback((updates: Partial<Profile>) => {
+    setProfile(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, ...updates }
+      // Sync to localStorage
+      const stored = getStoredAuth()
+      if (stored) {
+        setStoredAuth({ ...stored, profile: updated })
+      }
+      return updated
+    })
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, profile, mode, isLoading, setMode, refresh, injectAuth }}>
+    <AuthContext.Provider value={{ user, profile, mode, isLoading, setMode, refresh, injectAuth, updateProfile }}>
       {children}
     </AuthContext.Provider>
   )

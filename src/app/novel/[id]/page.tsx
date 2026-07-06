@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ChapterListClient from './chapter-list-client'
+import NovelActions from './novel-actions'
 import { cache } from 'react'
 
 export const dynamic = 'force-dynamic'
@@ -91,13 +92,14 @@ export default async function NovelDetailPage({ params }: { params: Promise<{ id
               </span>
             </div>
             {chapters && chapters.length > 0 && (
-              <div className="mt-4">
+              <div className="mt-4 flex items-center gap-3">
                 <Link
                   href={`/novel/${id}/chapter/${chapters[0].id}`}
                   className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-200 text-sm"
                 >
                   开始阅读
                 </Link>
+                <NovelActions novelId={id} novelTitle={novel.title} />
               </div>
             )}
           </div>

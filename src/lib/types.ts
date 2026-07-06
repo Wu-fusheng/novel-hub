@@ -160,4 +160,5 @@ export interface AuthContextType {
   setMode: (mode: UserMode) => void
   refresh: () => void
   injectAuth: (user: any, profile: Profile | null, tokens?: { access_token: string; refresh_token: string; expires_at: number }) => void
+  updateProfile: (updates: Partial<Profile>) => void
 }

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import ConfirmModal from '@/components/ConfirmModal'
 
 const navItems = [
   { href: '/admin', label: '仪表盘', icon: '📊' },
@@ -16,12 +17,14 @@ export default function AdminNavSidebar() {
   const router = useRouter()
   const { profile, refresh } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   const handleLogout = async () => {
+    localStorage.removeItem('novel-hub-auth')
+    localStorage.removeItem('novel-hub-mode')
     const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     await supabase.auth.signOut()
-    localStorage.removeItem('novel-hub-mode')
     refresh()
     router.push('/')
     router.refresh()
@@ -95,7 +98,7 @@ export default function AdminNavSidebar() {
                   返回前台
                 </Link>
                 <button
-                  onClick={handleLogout}
+                  onClick={() => setShowLogoutModal(true)}
                   className="flex-1 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
                 >
                   退出
@@ -152,7 +155,7 @@ export default function AdminNavSidebar() {
                 返回前台
               </Link>
               <button
-                onClick={handleLogout}
+                onClick={() => setShowLogoutModal(true)}
                 className="flex-1 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
               >
                 退出
@@ -161,6 +164,17 @@ export default function AdminNavSidebar() {
           </div>
         </div>
       </aside>
+
+      {/* Logout Confirm Modal */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        title="退出登录"
+        message="确定要退出登录吗？"
+        confirmText="确认退出"
+        cancelText="取消"
+      />
     </>
   )
 }

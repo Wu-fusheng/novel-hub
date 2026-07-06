@@ -39,24 +39,40 @@ export default function ChapterReaderClient({
   const [annotationRange, setAnnotationRange] = useState({ start: 0, end: 0 })
   const [refreshComments, setRefreshComments] = useState(0)
   const [showSettings, setShowSettings] = useState(false)
+  const [showFab, setShowFab] = useState(false)
 
-  // Update reading progress and record read
+  // Detect scroll position for floating back button
   useEffect(() => {
-    const updateProgress = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase.from('reading_progress').upsert({
-          user_id: user.id,
-          novel_id: novelId,
-          chapter_id: chapter.id,
-          last_read_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,novel_id' })
-        // Record chapter read for statistics
-        await recordChapterRead(chapter.id)
-      }
+    const handleScroll = () => {
+      setShowFab(window.scrollY > window.innerHeight)
     }
-    updateProgress()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Update reading progress and record read with debounce
+  // Wait 2 seconds after entering chapter before recording progress
+  // This prevents frequent writes when rapidly jumping between chapters
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const updateProgress = async () => {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('reading_progress').upsert({
+            user_id: user.id,
+            novel_id: novelId,
+            chapter_id: chapter.id,
+            last_read_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,novel_id' })
+          // Record chapter read for statistics
+          await recordChapterRead(chapter.id)
+        }
+      }
+      updateProgress()
+    }, 2000) // 2 second debounce
+
+    return () => clearTimeout(timer)
   }, [chapter.id, novelId])
 
   // Keyboard shortcuts
@@ -135,8 +151,11 @@ export default function ChapterReaderClient({
       <div className={`sticky top-0 z-40 backdrop-blur-md border-b shadow-sm ${themeBarClasses[settings.theme]}`}>
         <div className="max-w-4xl mx-auto px-4 h-12 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Link href={`/novel/${novelId}`} className="text-gray-500 hover:text-gray-700 text-sm">
-              ← 返回
+            <Link href={`/novel/${novelId}`} className="text-gray-500 hover:text-gray-700 text-sm flex items-center" title="返回小说详情">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              返回
             </Link>
             <span className="text-gray-300">|</span>
             <span className="text-sm text-gray-600 font-medium truncate max-w-[200px]">
@@ -403,6 +422,19 @@ export default function ChapterReaderClient({
           }}
           onSuccess={handleAnnotationSuccess}
         />
+      )}
+
+      {/* Floating Back Button (FAB) - appears when scrolling */}
+      {showFab && (
+        <Link
+          href={`/novel/${novelId}`}
+          className="fixed right-6 bottom-6 z-40 w-12 h-12 bg-white/90 backdrop-blur-sm shadow-lg rounded-full flex items-center justify-center hover:bg-white hover:shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 border border-gray-200"
+          title="返回小说详情"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
       )}
     </div>
   )

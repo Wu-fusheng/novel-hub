@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface BookshelfItemClient {
   id: string
@@ -21,10 +22,11 @@ interface BookshelfClientProps {
 export default function BookshelfClient({ bookshelf }: BookshelfClientProps) {
   const router = useRouter()
   const [removing, setRemoving] = useState<string | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<{ novelId: string; title: string } | null>(null)
 
-  const handleRemove = async (novelId: string) => {
-    if (!confirm('确定要将这本书从书架移除吗？')) return
-
+  const handleRemove = async () => {
+    if (!removeTarget) return
+    const novelId = removeTarget.novelId
     setRemoving(novelId)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -40,6 +42,7 @@ export default function BookshelfClient({ bookshelf }: BookshelfClientProps) {
       router.refresh()
     }
     setRemoving(null)
+    setRemoveTarget(null)
   }
 
   const handleContinueReading = (novelId: string, chapterId: string | null) => {
@@ -126,7 +129,7 @@ export default function BookshelfClient({ bookshelf }: BookshelfClientProps) {
                 继续阅读
               </button>
               <button
-                onClick={() => handleRemove(item.novel_id)}
+                onClick={() => setRemoveTarget({ novelId: item.novel_id, title: item.novel?.title || '未知小说' })}
                 disabled={removing === item.novel_id}
                 className="px-3 py-2 text-gray-400 hover:text-red-500 text-sm transition-colors"
                 title="移出书架"
@@ -137,6 +140,17 @@ export default function BookshelfClient({ bookshelf }: BookshelfClientProps) {
           </div>
         )
       })}
+
+      {/* Remove Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={handleRemove}
+        title="移出书架"
+        message={`确定要将《${removeTarget?.title || ''}》从书架移除吗？`}
+        confirmText="确认移除"
+        cancelText="取消"
+      />
     </div>
   )
 }

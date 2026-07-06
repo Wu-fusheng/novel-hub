@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import ConfirmModal from '@/components/ConfirmModal'
 
 const navItems = [
   { href: '/admin', label: '仪表盘', icon: '📊' },
@@ -17,6 +18,7 @@ export default function AdminNav() {
   const router = useRouter()
   const supabase = createClient()
   const [profileName, setProfileName] = useState('')
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -35,6 +37,8 @@ export default function AdminNav() {
   }, [supabase])
 
   const handleLogout = async () => {
+    localStorage.removeItem('novel-hub-auth')
+    localStorage.removeItem('novel-hub-mode')
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()
@@ -69,7 +73,7 @@ export default function AdminNav() {
               👤 {profileName || '管理员'}
             </span>
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="px-4 py-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
             >
               退出登录
@@ -77,6 +81,17 @@ export default function AdminNav() {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirm Modal */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        title="退出登录"
+        message="确定要退出登录吗？"
+        confirmText="确认退出"
+        cancelText="取消"
+      />
     </nav>
   )
 }
