@@ -46,7 +46,7 @@ export default function LoginPage() {
             email: trimmedEmail,
             password,
           }),
-          15000,
+          12000,
           '作者登录'
         )
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
                   emailRedirectTo: `${window.location.origin}/auth/callback`,
                 },
               }),
-              15000,
+              12000,
               '作者注册'
             )
             if (signUpError) throw signUpError
@@ -77,7 +77,7 @@ export default function LoginPage() {
                 email: trimmedEmail,
                 password,
               }),
-              15000,
+              12000,
               '作者登录'
             )
             if (loginResult.error) throw loginResult.error
@@ -100,63 +100,39 @@ export default function LoginPage() {
         // 读者使用固定邮箱格式登录
         const safeUsername = trimmedUsername.replace(/[^a-zA-Z0-9_-]/g, '_')
 
-        // 尝试多种邮箱格式
+        // 生成多种可能的邮箱格式（包括常见后缀变体）
         const emailCandidates = [
           `reader_${safeUsername}@mail.novelhub.app`,
           `reader_${safeUsername}@novelhub.local`,
+          `reader_${safeUsername}_1@mail.novelhub.app`,
+          `reader_${safeUsername}_1@novelhub.local`,
+          `reader_${safeUsername}_2@mail.novelhub.app`,
+          `reader_${safeUsername}_2@novelhub.local`,
         ]
 
-        // 同时通过 profiles 表查找可能匹配的用户（处理 username 后缀情况）
-        let matchingProfiles: { id: string; username: string }[] | null = null
-        try {
-          const result = await withTimeout(
-            supabase
-              .from('profiles')
-              .select('id, username')
-              .like('username', `${trimmedUsername}%`)
-              .limit(5)
-              .then(r => r),
-            10000,
-            '查询用户资料'
-          )
-          matchingProfiles = result.data
-          if (result.error) {
-            console.warn('Profiles query error:', result.error.message)
-          }
-        } catch (profileErr) {
-          console.warn('Profiles query failed:', profileErr)
-        }
-
-        if (matchingProfiles && matchingProfiles.length > 0) {
-          for (const profile of matchingProfiles) {
-            try {
-              const profileSafe = profile.username.replace(/[^a-zA-Z0-9_-]/g, '_')
-              const candidateEmails = [
-                `reader_${profileSafe}@mail.novelhub.app`,
-                `reader_${profileSafe}@novelhub.local`,
-              ]
-              for (const email of candidateEmails) {
-                if (!emailCandidates.includes(email)) {
-                  emailCandidates.push(email)
-                }
-              }
-            } catch {
-              // ignore
-            }
-          }
-        }
+        // 同时尝试查询 profiles 获取更多候选（短超时，不阻塞主流程）
+        const profilePromise = withTimeout(
+          supabase
+            .from('profiles')
+            .select('id, username')
+            .like('username', `${trimmedUsername}%`)
+            .limit(5)
+            .then(r => r),
+          3000,
+          '查询用户资料'
+        )
 
         let loggedIn = false
         let lastError = ''
 
-        // 依次尝试所有候选邮箱
+        // 第一阶段：先尝试基本邮箱格式
         for (const candidateEmail of emailCandidates) {
           const signInResult = await withTimeout(
             supabase.auth.signInWithPassword({
               email: candidateEmail,
               password: trimmedAuthCode,
             }),
-            15000,
+            8000,
             '读者登录'
           )
 
@@ -166,6 +142,49 @@ export default function LoginPage() {
           }
           if (signInResult.error) {
             lastError = signInResult.error.message
+          }
+        }
+
+        // 第二阶段：如果基本格式都失败，尝试用 profiles 查询结果补充的邮箱
+        if (!loggedIn) {
+          try {
+            const result = await profilePromise
+            if (result.data && result.data.length > 0) {
+              const extraCandidates: string[] = []
+              for (const profile of result.data) {
+                const profileSafe = profile.username.replace(/[^a-zA-Z0-9_-]/g, '_')
+                const extraEmails = [
+                  `reader_${profileSafe}@mail.novelhub.app`,
+                  `reader_${profileSafe}@novelhub.local`,
+                ]
+                for (const em of extraEmails) {
+                  if (!emailCandidates.includes(em) && !extraCandidates.includes(em)) {
+                    extraCandidates.push(em)
+                  }
+                }
+              }
+
+              for (const candidateEmail of extraCandidates) {
+                const signInResult = await withTimeout(
+                  supabase.auth.signInWithPassword({
+                    email: candidateEmail,
+                    password: trimmedAuthCode,
+                  }),
+                  8000,
+                  '读者登录'
+                )
+
+                if (!signInResult.error && signInResult.data.session) {
+                  loggedIn = true
+                  break
+                }
+                if (signInResult.error) {
+                  lastError = signInResult.error.message
+                }
+              }
+            }
+          } catch {
+            // profiles 查询失败或超时，忽略
           }
         }
 
@@ -185,7 +204,7 @@ export default function LoginPage() {
                 emailRedirectTo: `${window.location.origin}/auth/callback`,
               },
             }),
-            15000,
+            12000,
             '读者注册'
           )
           if (signUpError) {
@@ -198,7 +217,7 @@ export default function LoginPage() {
               email: newReaderEmail,
               password: trimmedAuthCode,
             }),
-            15000,
+            8000,
             '读者登录'
           )
           if (loginResult.error) {
