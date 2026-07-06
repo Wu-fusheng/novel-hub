@@ -13,8 +13,10 @@ export default function AddToBookshelfButton({ novelId, novelTitle }: AddToBooks
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  // Check if novel is already in bookshelf
+  // Check if novel is already in bookshelf with 3-second timeout
   useEffect(() => {
+    let timedOut = false
+
     const check = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -22,14 +24,30 @@ export default function AddToBookshelfButton({ novelId, novelTitle }: AddToBooks
         setLoading(false)
         return
       }
-      const { data } = await supabase
-        .from('reading_progress')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('novel_id', novelId)
-        .maybeSingle()
-      setInBookshelf(!!data)
-      setLoading(false)
+
+      // 3-second timeout to prevent hanging
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          timedOut = true
+          setLoading(false)
+          resolve()
+        }, 3000)
+      })
+
+      const checkPromise = (async () => {
+        const { data } = await supabase
+          .from('reading_progress')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('novel_id', novelId)
+          .maybeSingle()
+        if (!timedOut) {
+          setInBookshelf(!!data)
+          setLoading(false)
+        }
+      })()
+
+      await Promise.race([checkPromise, timeoutPromise])
     }
     check()
   }, [novelId])
