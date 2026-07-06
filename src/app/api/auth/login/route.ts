@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json()
+    const { email, password, autoRegister, role, metadata } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json(
@@ -37,17 +37,44 @@ export async function POST(request: Request) {
       }
     )
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let loginResult = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    if (error) {
+    // If login failed and autoRegister is enabled, try to sign up first
+    if (loginResult.error && autoRegister) {
+      const errMsg = loginResult.error.message || ''
+      if (errMsg.includes('Invalid login') || errMsg.includes('User not found')) {
+        const signUpResult = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              email,
+              role: role || 'author',
+              ...(metadata || {}),
+            },
+          },
+        })
+        if (!signUpResult.error) {
+          // Try login again after successful registration
+          loginResult = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+        }
+      }
+    }
+
+    if (loginResult.error) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: loginResult.error.message },
         { status: 401 }
       )
     }
+
+    const data = loginResult.data
 
     // Fetch user profile from profiles table
     let profile = null
@@ -89,8 +116,6 @@ export async function POST(request: Request) {
           response.cookies.set(cookie.name, cookie.value, {
             path: '/',
             sameSite: 'lax',
-            // Only set Secure in production on HTTPS domains
-            // In development or localhost, Secure cookies won't be stored by browsers
             secure: false,
             httpOnly: false,
           })

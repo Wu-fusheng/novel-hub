@@ -72,6 +72,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient()
+
+    const restoreFromStorage = (): boolean => {
+      const stored = getStoredAuth()
+      if (stored && stored.user) {
+        setUser(stored.user)
+        setProfile(stored.profile)
+        const m = determineMode(stored.profile)
+        setModeState(m)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(MODE_KEY, m)
+        }
+        return true
+      }
+      return false
+    }
+
     const initAuth = async () => {
       const savedMode = typeof window !== 'undefined' ? localStorage.getItem(MODE_KEY) : null
 
@@ -90,10 +106,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Priority 2: Try Supabase SDK (getUser -> getSession)
-      // Use short timeout for getUser since it requires network call to Supabase
+      // Priority 2: Immediately restore from localStorage for fastest UI response
+      // This ensures the user sees the logged-in state immediately even if Supabase is slow
+      const restored = restoreFromStorage()
+      if (restored) {
+        setIsLoading(false)
+        // Best-effort background sync with Supabase SDK
+        supabase.auth.setSession({
+          access_token: getStoredAuth()!.access_token,
+          refresh_token: getStoredAuth()!.refresh_token,
+        }).catch(() => {})
+        // Also try to refresh profile from server in background
+        loadProfile(getStoredAuth()!.user.id).then((p) => {
+          if (p) {
+            setProfile(p)
+            setModeState(determineMode(p))
+          }
+        }).catch(() => {})
+        return
+      }
+
+      // Priority 3: No localStorage data - try Supabase SDK
       let authUser = null
-      let supabaseSession = null
       try {
         const { data: { user: getUserResult } } = await Promise.race([
           supabase.auth.getUser(),
@@ -105,48 +139,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authUser = getUserResult
         }
       } catch {
-        // getUser failed or timed out - fall through to getSession
+        // getUser failed or timed out
       }
 
       if (!authUser) {
         try {
           const { data: { session } } = await supabase.auth.getSession()
           authUser = session?.user || null
-          supabaseSession = session
         } catch {
           // getSession also failed
         }
       }
 
-      // Priority 3: Fallback to localStorage-stored auth data
-      if (!authUser) {
-        const stored = getStoredAuth()
-        if (stored && stored.user) {
-          authUser = stored.user
-          // Try to restore session in Supabase SDK (best-effort, no await)
-          supabase.auth.setSession({
-            access_token: stored.access_token,
-            refresh_token: stored.refresh_token,
-          }).catch(() => {
-            // Ignore - we'll use localStorage data directly
-          })
-        }
-      }
-
       if (authUser) {
         setUser(authUser)
-        // Try to load profile from Supabase, fallback to localStorage
         let p: Profile | null = null
         try {
           p = await loadProfile(authUser.id)
         } catch {
-          // Network error, try localStorage
-          const stored = getStoredAuth()
-          p = stored?.profile || null
-        }
-        if (!p) {
-          const stored = getStoredAuth()
-          p = stored?.profile || null
+          p = null
         }
         setProfile(p)
         const m = determineMode(p)
@@ -165,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const authUserData = session?.user || null
         if (authUserData) {
           setUser(authUserData)

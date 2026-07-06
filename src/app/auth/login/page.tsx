@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -38,55 +37,33 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const supabase = createClient()
-
       if (loginType === 'author') {
-        // 作者登录：邮箱 + 密码，若账户不存在则自动注册
+        // 作者登录：通过 API 代理请求 Supabase（自动注册新用户）
         const trimmedEmail = email.trim()
-        const { error: signInError } = await withTimeout(
-          supabase.auth.signInWithPassword({
-            email: trimmedEmail,
-            password,
+        const res = await withTimeout(
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: trimmedEmail,
+              password,
+              autoRegister: true,
+              role: 'author',
+            }),
+            credentials: 'include',
           }),
-          12000,
+          15000,
           '作者登录'
         )
-
-        if (signInError) {
-          const msg = signInError.message || ''
-          if (msg.includes('Invalid login') || msg.includes('User not found')) {
-            // 用户不存在，自动注册
-            const { error: signUpError } = await withTimeout(
-              supabase.auth.signUp({
-                email: trimmedEmail,
-                password,
-                options: {
-                  data: {
-                    email: trimmedEmail,
-                    role: 'author',
-                  },
-                  emailRedirectTo: `${window.location.origin}/auth/callback`,
-                },
-              }),
-              12000,
-              '作者注册'
-            )
-            if (signUpError) throw signUpError
-
-            // signUp 不会自动登录，需要手动登录
-            const loginResult = await withTimeout(
-              supabase.auth.signInWithPassword({
-                email: trimmedEmail,
-                password,
-              }),
-              12000,
-              '作者登录'
-            )
-            if (loginResult.error) throw loginResult.error
-          } else {
-            throw signInError
-          }
+        const data = await res.json()
+        if (!data.success || !data.session || !data.user) {
+          throw new Error(data.error || '作者登录失败')
         }
+        injectAuth(data.user, data.profile || null, {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_at: data.session.expires_at,
+        })
       } else {
         // 读者登录：验证授权密码，通过 API 代理请求 Supabase
         const trimmedUsername = username.trim()
@@ -111,18 +88,6 @@ export default function LoginPage() {
           `reader_${safeUsername}_2@mail.novelhub.app`,
           `reader_${safeUsername}_2@novelhub.local`,
         ]
-
-        // 同时尝试查询 profiles 获取更多候选（短超时，不阻塞主流程）
-        const profilePromise = withTimeout(
-          supabase
-            .from('profiles')
-            .select('id, username')
-            .like('username', `${trimmedUsername}%`)
-            .limit(5)
-            .then(r => r),
-          3000,
-          '查询用户资料'
-        )
 
         // 通过 API 代理进行登录的辅助函数
         // 返回 session tokens、user 和 profile 以便前端注入到 AuthContext
@@ -171,71 +136,33 @@ export default function LoginPage() {
           }
         }
 
-        // 第二阶段：如果基本格式都失败，尝试用 profiles 查询结果补充的邮箱
-        if (!loggedIn) {
-          try {
-            const result = await profilePromise
-            if (result.data && result.data.length > 0) {
-              const extraCandidates: string[] = []
-              for (const profile of result.data) {
-                const profileSafe = profile.username.replace(/[^a-zA-Z0-9_-]/g, '_')
-                const extraEmails = [
-                  `reader_${profileSafe}@mail.novelhub.app`,
-                  `reader_${profileSafe}@novelhub.local`,
-                ]
-                for (const em of extraEmails) {
-                  if (!emailCandidates.includes(em) && !extraCandidates.includes(em)) {
-                    extraCandidates.push(em)
-                  }
-                }
-              }
-
-              for (const candidateEmail of extraCandidates) {
-                const result = await proxyLogin(candidateEmail)
-                if (result.success && result.session && result.user) {
-                  loggedIn = true
-                  loginData = { session: result.session, user: result.user, profile: result.profile }
-                  break
-                }
-                if (result.error) {
-                  lastError = result.error
-                }
-              }
-            }
-          } catch {
-            // profiles 查询失败或超时，忽略
-          }
-        }
-
-        // 所有候选邮箱都失败，尝试注册新用户
+        // 所有候选邮箱都失败，尝试通过 API 代理注册新用户
         if (!loggedIn) {
           const newReaderEmail = emailCandidates[0]
-          const { error: signUpError } = await withTimeout(
-            supabase.auth.signUp({
-              email: newReaderEmail,
-              password: trimmedAuthCode,
-              options: {
-                data: {
+          const registerRes = await withTimeout(
+            fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: newReaderEmail,
+                password: trimmedAuthCode,
+                autoRegister: true,
+                role: 'reader',
+                metadata: {
                   username: trimmedUsername,
                   display_name: trimmedUsername,
-                  role: 'reader',
                 },
-                emailRedirectTo: `${window.location.origin}/auth/callback`,
-              },
+              }),
+              credentials: 'include',
             }),
-            12000,
+            15000,
             '读者注册'
           )
-          if (signUpError) {
-            throw new Error(`登录失败：${lastError || signUpError.message}`)
+          const registerData = await registerRes.json()
+          if (!registerData.success || !registerData.session || !registerData.user) {
+            throw new Error(`登录失败：${lastError || registerData.error || '注册失败'}`)
           }
-
-          // signUp 不会自动登录，需要通过 API 代理手动登录
-          const loginResult = await proxyLogin(newReaderEmail)
-          if (!loginResult.success || !loginResult.session || !loginResult.user) {
-            throw new Error(`登录失败：${loginResult.error || '未知错误'}`)
-          }
-          loginData = { session: loginResult.session, user: loginResult.user, profile: loginResult.profile }
+          loginData = { session: registerData.session, user: registerData.user, profile: registerData.profile }
         }
 
         // 将服务端获取的 user 和 profile 注入到 AuthContext
