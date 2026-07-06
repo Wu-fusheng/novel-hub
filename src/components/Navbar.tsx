@@ -44,7 +44,12 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     const supabase = createClient()
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // Network error - clear auth data locally
+      localStorage.removeItem('novel-hub-auth')
+    }
     localStorage.removeItem('novel-hub-mode')
     router.push('/')
     router.refresh()

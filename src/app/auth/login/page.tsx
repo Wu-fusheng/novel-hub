@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -22,6 +23,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Pro
 
 export default function LoginPage() {
   const router = useRouter()
+  const { injectAuth } = useAuth()
   const [loginType, setLoginType] = useState<LoginType>('reader')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -86,7 +88,7 @@ export default function LoginPage() {
           }
         }
       } else {
-        // 读者登录：验证授权密码
+        // 读者登录：验证授权密码，通过 API 代理请求 Supabase
         const trimmedUsername = username.trim()
         const trimmedAuthCode = authCode.trim()
 
@@ -122,26 +124,50 @@ export default function LoginPage() {
           '查询用户资料'
         )
 
+        // 通过 API 代理进行登录的辅助函数
+        // 返回 session tokens、user 和 profile 以便前端注入到 AuthContext
+        const proxyLogin = async (candidateEmail: string): Promise<{
+          success: boolean
+          error?: string
+          session?: { access_token: string; refresh_token: string; expires_in: number; expires_at: number }
+          user?: { id: string; email: string; user_metadata: any }
+          profile?: any
+        }> => {
+          try {
+            const res = await withTimeout(
+              fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: candidateEmail, password: trimmedAuthCode }),
+                credentials: 'include',
+              }),
+              12000,
+              '读者登录'
+            )
+            const data = await res.json()
+            if (data.success && data.session) {
+              return { success: true, session: data.session, user: data.user, profile: data.profile }
+            }
+            return { success: false, error: data.error || '登录失败' }
+          } catch (err) {
+            return { success: false, error: err instanceof Error ? err.message : '请求失败' }
+          }
+        }
+
         let loggedIn = false
         let lastError = ''
+        let loginData: { session: { access_token: string; refresh_token: string; expires_at: number }; user: any; profile: any } | null = null
 
         // 第一阶段：先尝试基本邮箱格式
         for (const candidateEmail of emailCandidates) {
-          const signInResult = await withTimeout(
-            supabase.auth.signInWithPassword({
-              email: candidateEmail,
-              password: trimmedAuthCode,
-            }),
-            8000,
-            '读者登录'
-          )
-
-          if (!signInResult.error && signInResult.data.session) {
+          const result = await proxyLogin(candidateEmail)
+          if (result.success && result.session && result.user) {
             loggedIn = true
+            loginData = { session: result.session, user: result.user, profile: result.profile }
             break
           }
-          if (signInResult.error) {
-            lastError = signInResult.error.message
+          if (result.error) {
+            lastError = result.error
           }
         }
 
@@ -165,21 +191,14 @@ export default function LoginPage() {
               }
 
               for (const candidateEmail of extraCandidates) {
-                const signInResult = await withTimeout(
-                  supabase.auth.signInWithPassword({
-                    email: candidateEmail,
-                    password: trimmedAuthCode,
-                  }),
-                  8000,
-                  '读者登录'
-                )
-
-                if (!signInResult.error && signInResult.data.session) {
+                const result = await proxyLogin(candidateEmail)
+                if (result.success && result.session && result.user) {
                   loggedIn = true
+                  loginData = { session: result.session, user: result.user, profile: result.profile }
                   break
                 }
-                if (signInResult.error) {
-                  lastError = signInResult.error.message
+                if (result.error) {
+                  lastError = result.error
                 }
               }
             }
@@ -211,26 +230,31 @@ export default function LoginPage() {
             throw new Error(`登录失败：${lastError || signUpError.message}`)
           }
 
-          // signUp 不会自动登录，需要手动登录
-          const loginResult = await withTimeout(
-            supabase.auth.signInWithPassword({
-              email: newReaderEmail,
-              password: trimmedAuthCode,
-            }),
-            8000,
-            '读者登录'
-          )
-          if (loginResult.error) {
-            throw new Error(`登录失败：${loginResult.error.message}`)
+          // signUp 不会自动登录，需要通过 API 代理手动登录
+          const loginResult = await proxyLogin(newReaderEmail)
+          if (!loginResult.success || !loginResult.session || !loginResult.user) {
+            throw new Error(`登录失败：${loginResult.error || '未知错误'}`)
           }
+          loginData = { session: loginResult.session, user: loginResult.user, profile: loginResult.profile }
+        }
+
+        // 将服务端获取的 user 和 profile 注入到 AuthContext
+        // 同时持久化 tokens 到 localStorage，确保页面刷新后仍可恢复
+        if (loginData) {
+          injectAuth(loginData.user, loginData.profile || null, {
+            access_token: loginData.session.access_token,
+            refresh_token: loginData.session.refresh_token,
+            expires_at: loginData.session.expires_at,
+          })
         }
       }
 
       // 登录成功后清除游客模式标记
       localStorage.removeItem('novel-hub-mode')
 
+      // Use Next.js router for SPA navigation (preserves React state from injectAuth)
+      // Do NOT use router.refresh() as it triggers SSR which may override injected state
       router.push('/')
-      router.refresh()
     } catch (err) {
       console.error('Login error:', err)
       setError(err instanceof Error ? err.message : '登录失败，请重试')
