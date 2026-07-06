@@ -25,17 +25,34 @@ export default function SettingsClient({ userId, initialProfile }: SettingsClien
     setMessage(null)
 
     const supabase = createClient()
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        display_name: displayName.trim() || null,
-        bio: bio.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
 
-    if (error) {
-      setMessage({ type: 'error', text: '保存失败：' + error.message })
+    // 8-second timeout to prevent hanging
+    let timedOut = false
+    const timeoutPromise = new Promise<{ timedOut: boolean }>((resolve) => {
+      setTimeout(() => {
+        timedOut = true
+        resolve({ timedOut: true })
+      }, 8000)
+    })
+
+    const savePromise = (async () => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: displayName.trim() || null,
+          bio: bio.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+      return { timedOut: false, error }
+    })()
+
+    const result = await Promise.race([savePromise, timeoutPromise])
+
+    if (result.timedOut) {
+      setMessage({ type: 'error', text: '保存超时，请检查网络后重试' })
+    } else if ('error' in result && result.error) {
+      setMessage({ type: 'error', text: '保存失败：' + result.error.message })
     } else {
       // Update local state via AuthContext
       updateProfile({
