@@ -2,21 +2,36 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/supabase/client'
 import ConfirmModal from './ConfirmModal'
 
 export default function Navbar() {
   const router = useRouter()
-  const { user, profile, mode, isLoading, setMode } = useAuth()
+  const { user, profile, mode, isLoading, logout } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [showAccountMenu, setShowAccountMenu] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
 
   const isLoggedIn = !!user
   const isAuthor = mode === 'author' || mode === 'admin'
   const displayName = profile?.display_name || profile?.username || ''
+
+  // Close account menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false)
+      }
+    }
+    if (showAccountMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showAccountMenu])
 
   // Fetch unread notification count
   useEffect(() => {
@@ -40,22 +55,12 @@ export default function Navbar() {
     }
 
     loadUnreadCount()
-    const interval = setInterval(loadUnreadCount, 60000) // Refresh every minute
+    const interval = setInterval(loadUnreadCount, 60000)
     return () => clearInterval(interval)
   }, [user])
 
   const handleLogout = async () => {
-    // Clear localStorage FIRST so that the SIGNED_OUT event handler
-    // in auth-context can distinguish intentional logout from SDK errors
-    localStorage.removeItem('novel-hub-auth')
-    localStorage.removeItem('novel-hub-mode')
-
-    const supabase = createClient()
-    try {
-      await supabase.auth.signOut()
-    } catch {
-      // Network error - already cleared above
-    }
+    await logout()
     router.push('/')
     router.refresh()
   }
@@ -125,21 +130,63 @@ export default function Navbar() {
             {isLoading ? (
               <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
             ) : isLoggedIn ? (
-              <div className="flex items-center space-x-2">
-                <div className="hidden sm:flex items-center space-x-2">
+              <div className="relative" ref={accountMenuRef}>
+                <button
+                  onClick={() => setShowAccountMenu(!showAccountMenu)}
+                  className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xs font-bold">
                     {displayName.charAt(0) || '?'}
                   </div>
-                  <span className="text-sm text-gray-700 font-medium max-w-[100px] truncate">
+                  <span className="hidden sm:inline text-sm text-gray-700 font-medium max-w-[100px] truncate">
                     {displayName}
                   </span>
-                </div>
-                <button
-                  onClick={() => setShowLogoutModal(true)}
-                  className="px-3 py-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
-                >
-                  退出
+                  <svg className="w-3.5 h-3.5 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+
+                {/* Account Dropdown Menu */}
+                {showAccountMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <Link
+                      href="/user/bookshelf"
+                      onClick={() => setShowAccountMenu(false)}
+                      className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="mr-2.5">📚</span> 书架
+                    </Link>
+                    <Link
+                      href="/user/notifications"
+                      onClick={() => setShowAccountMenu(false)}
+                      className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="mr-2.5">🔔</span> 消息
+                      {unreadCount > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </Link>
+                    <Link
+                      href="/user/settings"
+                      onClick={() => setShowAccountMenu(false)}
+                      className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="mr-2.5">⚙️</span> 设置
+                    </Link>
+                    <div className="border-t border-gray-100 my-1" />
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false)
+                        setShowLogoutModal(true)
+                      }}
+                      className="flex items-center w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <span className="mr-2.5">🚪</span> 退出
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <Link
@@ -196,6 +243,16 @@ export default function Navbar() {
                 className="block px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100"
               >
                 🔔 消息 {unreadCount > 0 && `(${unreadCount})`}
+              </Link>
+            )}
+
+            {isLoggedIn && (
+              <Link
+                href="/user/settings"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100"
+              >
+                ⚙️ 设置
               </Link>
             )}
 

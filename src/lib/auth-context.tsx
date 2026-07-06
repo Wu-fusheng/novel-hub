@@ -313,8 +313,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Unified logout: clear all state, localStorage, and sign out from Supabase
+  const logout = useCallback(async () => {
+    // 1. Clear localStorage first - this prevents the SIGNED_OUT
+    //    handler from re-injecting stored auth
+    setStoredAuth(null)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(MODE_KEY)
+    }
+
+    // 2. Immediately clear React state
+    setUser(null)
+    setProfile(null)
+    setModeState('guest')
+
+    // 3. Fire-and-forget Supabase signOut
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore network errors
+    }
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, profile, mode, isLoading, setMode, refresh, injectAuth, updateProfile }}>
+    <AuthContext.Provider value={{ user, profile, mode, isLoading, setMode, refresh, injectAuth, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   )
