@@ -10,6 +10,16 @@ type LoginType = 'author' | 'reader'
 // 读者授权密码 - 开发者预设
 const READER_AUTH_PASSWORD = 'novelhub2025'
 
+// 带超时的Promise包装器
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} 请求超时，请检查网络连接后重试`)), ms)
+    )
+  ])
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [loginType, setLoginType] = useState<LoginType>('reader')
@@ -31,33 +41,45 @@ export default function LoginPage() {
       if (loginType === 'author') {
         // 作者登录：邮箱 + 密码，若账户不存在则自动注册
         const trimmedEmail = email.trim()
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: trimmedEmail,
-          password,
-        })
+        const { error: signInError } = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email: trimmedEmail,
+            password,
+          }),
+          15000,
+          '作者登录'
+        )
 
         if (signInError) {
           const msg = signInError.message || ''
           if (msg.includes('Invalid login') || msg.includes('User not found')) {
             // 用户不存在，自动注册
-            const { error: signUpError } = await supabase.auth.signUp({
-              email: trimmedEmail,
-              password,
-              options: {
-                data: {
-                  email: trimmedEmail,
-                  role: 'author',
+            const { error: signUpError } = await withTimeout(
+              supabase.auth.signUp({
+                email: trimmedEmail,
+                password,
+                options: {
+                  data: {
+                    email: trimmedEmail,
+                    role: 'author',
+                  },
+                  emailRedirectTo: `${window.location.origin}/auth/callback`,
                 },
-                emailRedirectTo: `${window.location.origin}/auth/callback`,
-              },
-            })
+              }),
+              15000,
+              '作者注册'
+            )
             if (signUpError) throw signUpError
 
             // signUp 不会自动登录，需要手动登录
-            const loginResult = await supabase.auth.signInWithPassword({
-              email: trimmedEmail,
-              password,
-            })
+            const loginResult = await withTimeout(
+              supabase.auth.signInWithPassword({
+                email: trimmedEmail,
+                password,
+              }),
+              15000,
+              '作者登录'
+            )
             if (loginResult.error) throw loginResult.error
           } else {
             throw signInError
@@ -76,8 +98,6 @@ export default function LoginPage() {
         }
 
         // 读者使用固定邮箱格式登录
-        // 策略：先通过 profiles 表查找用户名对应的 auth 用户邮箱，再用邮箱登录
-        // 这样可以处理 username 被添加后缀（如 _1, _2）的情况
         const safeUsername = trimmedUsername.replace(/[^a-zA-Z0-9_-]/g, '_')
 
         // 尝试多种邮箱格式
@@ -87,18 +107,29 @@ export default function LoginPage() {
         ]
 
         // 同时通过 profiles 表查找可能匹配的用户（处理 username 后缀情况）
-        const { data: matchingProfiles } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .like('username', `${trimmedUsername}%`)
-          .limit(5)
+        let matchingProfiles: { id: string; username: string }[] | null = null
+        try {
+          const result = await withTimeout(
+            supabase
+              .from('profiles')
+              .select('id, username')
+              .like('username', `${trimmedUsername}%`)
+              .limit(5)
+              .then(r => r),
+            10000,
+            '查询用户资料'
+          )
+          matchingProfiles = result.data
+          if (result.error) {
+            console.warn('Profiles query error:', result.error.message)
+          }
+        } catch (profileErr) {
+          console.warn('Profiles query failed:', profileErr)
+        }
 
         if (matchingProfiles && matchingProfiles.length > 0) {
-          // 通过 auth admin API 获取这些用户的实际邮箱
           for (const profile of matchingProfiles) {
             try {
-              // 尝试用 getUser 获取用户信息（需要已登录，这里用另一种方式）
-              // 直接尝试常见的邮箱格式组合
               const profileSafe = profile.username.replace(/[^a-zA-Z0-9_-]/g, '_')
               const candidateEmails = [
                 `reader_${profileSafe}@mail.novelhub.app`,
@@ -116,43 +147,63 @@ export default function LoginPage() {
         }
 
         let loggedIn = false
+        let lastError = ''
 
         // 依次尝试所有候选邮箱
         for (const candidateEmail of emailCandidates) {
-          const signInResult = await supabase.auth.signInWithPassword({
-            email: candidateEmail,
-            password: trimmedAuthCode,
-          })
+          const signInResult = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email: candidateEmail,
+              password: trimmedAuthCode,
+            }),
+            15000,
+            '读者登录'
+          )
 
           if (!signInResult.error && signInResult.data.session) {
             loggedIn = true
             break
+          }
+          if (signInResult.error) {
+            lastError = signInResult.error.message
           }
         }
 
         // 所有候选邮箱都失败，尝试注册新用户
         if (!loggedIn) {
           const newReaderEmail = emailCandidates[0]
-          const { error: signUpError } = await supabase.auth.signUp({
-            email: newReaderEmail,
-            password: trimmedAuthCode,
-            options: {
-              data: {
-                username: trimmedUsername,
-                display_name: trimmedUsername,
-                role: 'reader',
+          const { error: signUpError } = await withTimeout(
+            supabase.auth.signUp({
+              email: newReaderEmail,
+              password: trimmedAuthCode,
+              options: {
+                data: {
+                  username: trimmedUsername,
+                  display_name: trimmedUsername,
+                  role: 'reader',
+                },
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
               },
-              emailRedirectTo: `${window.location.origin}/auth/callback`,
-            },
-          })
-          if (signUpError) throw signUpError
+            }),
+            15000,
+            '读者注册'
+          )
+          if (signUpError) {
+            throw new Error(`登录失败：${lastError || signUpError.message}`)
+          }
 
           // signUp 不会自动登录，需要手动登录
-          const loginResult = await supabase.auth.signInWithPassword({
-            email: newReaderEmail,
-            password: trimmedAuthCode,
-          })
-          if (loginResult.error) throw loginResult.error
+          const loginResult = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email: newReaderEmail,
+              password: trimmedAuthCode,
+            }),
+            15000,
+            '读者登录'
+          )
+          if (loginResult.error) {
+            throw new Error(`登录失败：${loginResult.error.message}`)
+          }
         }
       }
 
@@ -162,6 +213,7 @@ export default function LoginPage() {
       router.push('/')
       router.refresh()
     } catch (err) {
+      console.error('Login error:', err)
       setError(err instanceof Error ? err.message : '登录失败，请重试')
     } finally {
       setLoading(false)
