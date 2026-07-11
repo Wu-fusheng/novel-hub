@@ -146,9 +146,9 @@ export default function Navbar() {
                   </svg>
                 </button>
 
-                {/* Account Dropdown Menu */}
+                {/* Account Dropdown Menu - hidden on mobile, use hamburger menu instead */}
                 {showAccountMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="hidden sm:block absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                     <Link
                       href="/user/bookshelf"
                       onClick={() => setShowAccountMenu(false)}

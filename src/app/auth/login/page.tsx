@@ -215,7 +215,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="w-full max-w-md mx-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">📚 欢迎来到 Novel Hub</h1>
             <p className="text-gray-500">登录您的 Novel Hub 账户</p>

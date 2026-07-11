@@ -21,17 +21,17 @@ export default function HeroButtons() {
   }, [])
 
   return (
-    <div className="flex justify-center space-x-4">
+    <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
       <Link
         href="/novels"
-        className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-200"
+        className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-200 text-center"
       >
         开始阅读
       </Link>
       {!isLoggedIn && (
         <Link
           href="/auth/login"
-          className="px-8 py-3 border-2 border-amber-300 text-amber-700 font-semibold rounded-xl hover:bg-amber-50 transition-colors"
+          className="px-8 py-3 border-2 border-amber-300 text-amber-700 font-semibold rounded-xl hover:bg-amber-50 transition-colors text-center"
         >
           登录 / 注册
         </Link>

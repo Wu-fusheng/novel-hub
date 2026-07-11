@@ -96,12 +96,12 @@ export default function NotificationsClient({ notifications: initialNotification
             <div className="flex items-start gap-3">
               <span className="text-xl flex-shrink-0">{getIcon(notification.type)}</span>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-gray-800">{notification.title}</h4>
-                  <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{formatTime(notification.created_at)}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-medium text-gray-800 truncate">{notification.title}</h4>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(notification.created_at)}</span>
                 </div>
                 {notification.content && (
-                  <p className="text-sm text-gray-500 mt-1">{notification.content}</p>
+                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{notification.content}</p>
                 )}
                 {notification.novel && (
                   <p className="text-xs text-amber-600 mt-1">{notification.novel.title}</p>

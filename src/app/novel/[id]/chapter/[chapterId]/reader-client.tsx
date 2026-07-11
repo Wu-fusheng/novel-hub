@@ -158,7 +158,7 @@ export default function ChapterReaderClient({
               返回
             </Link>
             <span className="text-gray-300">|</span>
-            <span className="text-sm text-gray-600 font-medium truncate max-w-[200px]">
+            <span className="text-sm text-gray-600 font-medium truncate max-w-[120px] sm:max-w-[200px]">
               {novel.title}
             </span>
           </div>
@@ -182,7 +182,7 @@ export default function ChapterReaderClient({
 
         {/* Settings Panel */}
         {showSettings && (
-          <div className="absolute right-4 top-12 mt-1 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50">
+          <div className="absolute left-2 sm:right-4 top-12 sm:left-auto mt-1 w-[calc(100vw-1rem)] sm:w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50">
             <h3 className="font-semibold text-gray-800 mb-3">阅读设置</h3>
             
             {/* Font Size */}
@@ -303,7 +303,7 @@ export default function ChapterReaderClient({
         )}
 
         {/* Content */}
-        <div className="flex-1 max-w-3xl mx-auto px-6 sm:px-8 py-8">
+        <div className="flex-1 max-w-3xl mx-auto px-4 sm:px-8 py-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold mb-2">
               第{chapter.chapter_number}章 {chapter.title}
@@ -334,9 +334,9 @@ export default function ChapterReaderClient({
               <p key={i} className="mb-4 indent-8">{p}</p>
             ))}
 
-            {/* Text selection hint */}
+            {/* Text selection hint - desktop only */}
             {authUser && (
-              <div className="absolute -top-6 right-0 text-xs text-gray-400 italic">
+              <div className="hidden md:block absolute -top-6 right-0 text-xs text-gray-400 italic">
                 选中文字可添加批注
               </div>
             )}
@@ -397,8 +397,8 @@ export default function ChapterReaderClient({
             isLastChapter={!nextChapter}
           />
 
-          {/* Keyboard Shortcuts Hint */}
-          <div className="mt-8 text-center text-xs text-gray-400 space-x-3">
+          {/* Keyboard Shortcuts Hint - desktop only */}
+          <div className="mt-8 text-center text-xs text-gray-400 space-x-3 hidden md:block">
             <span>← 上一章</span>
             <span>→ 下一章</span>
             <span>Ctrl++ 放大字体</span>
@@ -428,7 +428,7 @@ export default function ChapterReaderClient({
       {showFab && (
         <Link
           href={`/novel/${novelId}`}
-          className="fixed right-6 bottom-6 z-40 w-12 h-12 bg-white/90 backdrop-blur-sm shadow-lg rounded-full flex items-center justify-center hover:bg-white hover:shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 border border-gray-200"
+          className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-40 w-12 h-12 bg-white/90 backdrop-blur-sm shadow-lg rounded-full flex items-center justify-center hover:bg-white hover:shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 border border-gray-200"
           title="返回小说详情"
         >
           <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

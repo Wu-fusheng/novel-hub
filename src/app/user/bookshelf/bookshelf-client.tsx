@@ -88,43 +88,45 @@ export default function BookshelfClient({ bookshelf }: BookshelfClientProps) {
         return (
           <div
             key={item.id}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 flex items-center gap-4"
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
           >
-            {/* Book cover */}
-            <div className="w-16 h-20 sm:w-20 sm:h-26 bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-3xl">📖</span>
-            </div>
-
-            {/* Book info */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-800 truncate">{item.novel?.title || '未知小说'}</h3>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {item.novel?.author?.display_name || item.novel?.profiles?.display_name || '匿名作者'}
-              </p>
-              <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                {item.chapter && (
-                  <span>
-                    读到 第{item.chapter.chapter_number}章 {item.chapter.title}
-                  </span>
-                )}
-                <span>{formatTime(item.last_read_at)}</span>
+            {/* Book cover + info row */}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-14 h-18 sm:w-20 sm:h-26 bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl sm:text-3xl">📖</span>
               </div>
-              {/* Progress bar */}
-              {progress > 0 && (
-                <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
-                  <div
-                    className="bg-amber-500 h-1.5 rounded-full transition-all"
-                    style={{ width: `${Math.min(progress, 100)}%` }}
-                  />
+
+              {/* Book info */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-800 truncate text-sm sm:text-base">{item.novel?.title || '未知小说'}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate">
+                  {item.novel?.author?.display_name || item.novel?.profiles?.display_name || '匿名作者'}
+                </p>
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
+                  {item.chapter && (
+                    <span className="truncate">
+                      读到 第{item.chapter.chapter_number}章 {item.chapter.title}
+                    </span>
+                  )}
+                  <span className="flex-shrink-0">{formatTime(item.last_read_at)}</span>
                 </div>
-              )}
+                {/* Progress bar */}
+                {progress > 0 && (
+                  <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
+                    <div
+                      className="bg-amber-500 h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(progress, 100)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
               <button
                 onClick={() => handleContinueReading(item.novel_id, item.chapter_id)}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-sm"
+                className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-sm"
               >
                 继续阅读
               </button>
