@@ -38,7 +38,7 @@ export default function AdminNavSidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+      <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="text-gray-600 hover:text-gray-800"
@@ -57,7 +57,7 @@ export default function AdminNavSidebar() {
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/30" onClick={() => setSidebarOpen(false)}>
+        <div className="md:hidden fixed inset-0 z-40 bg-black/30" onClick={() => setSidebarOpen(false)}>
           <div className="w-64 bg-white h-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-100">
               <Link href="/" className="text-xl font-bold text-amber-600">
@@ -110,7 +110,7 @@ export default function AdminNavSidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+      <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
           <div className="flex items-center flex-shrink-0 px-4">
             <Link href="/" className="text-xl font-bold text-amber-600">

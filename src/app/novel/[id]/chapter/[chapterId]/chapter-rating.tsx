@@ -68,7 +68,7 @@ export default function ChapterRating({ chapterId }: ChapterRatingProps) {
               ${submitting ? 'opacity-50' : ''}`}
           >
             <svg
-              className={`w-6 h-6 ${
+              className={`w-5 h-5 sm:w-6 sm:h-6 ${
                 star <= (interactive && hoverRating ? hoverRating : rating)
                   ? 'text-amber-400 fill-amber-400'
                   : 'text-gray-300'

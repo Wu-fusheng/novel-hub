@@ -89,7 +89,7 @@ export default function CommentsPanel({ chapterId, novelId }: CommentsPanelProps
   const renderComment = (comment: Comment, isReply = false) => (
     <div
       key={comment.id}
-      className={`${isReply ? 'ml-12 mt-3' : 'mt-4'} p-4 rounded-xl ${
+      className={`${isReply ? 'ml-6 sm:ml-12 mt-3' : 'mt-4'} p-3 sm:p-4 rounded-xl ${
         comment.is_author_note
           ? 'bg-amber-50 border-amber-200'
           : 'bg-white border-gray-100'

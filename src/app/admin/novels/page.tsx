@@ -108,30 +108,31 @@ export default async function AdminNovelsPage() {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(novel.updated_at).toLocaleDateString('zh-CN')}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 sm:px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1 sm:gap-2 flex-wrap">
                     <Link
                       href={`/admin/novels/${novel.id}`}
-                      className="text-amber-600 hover:text-amber-700 text-sm font-medium"
+                      className="text-amber-600 hover:text-amber-700 text-xs sm:text-sm font-medium"
                     >
                       编辑
                     </Link>
                     <Link
                       href={`/admin/novels/${novel.id}/stats`}
-                      className="text-gray-400 hover:text-gray-600 text-sm font-medium ml-3"
+                      className="text-gray-400 hover:text-gray-600 text-xs sm:text-sm font-medium"
                       title="数据统计"
                     >
                       📊
                     </Link>
                     <Link
                       href={`/admin/novels/${novel.id}/comments`}
-                      className="text-gray-400 hover:text-gray-600 text-sm font-medium ml-2"
+                      className="text-gray-400 hover:text-gray-600 text-xs sm:text-sm font-medium"
                       title="留言管理"
                     >
                       💬
                     </Link>
                     <Link
                       href={`/novel/${novel.id}`}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium ml-3"
+                      className="text-blue-600 hover:text-blue-700 text-xs sm:text-sm font-medium"
                     >
                       预览
                     </Link>
@@ -139,6 +140,7 @@ export default async function AdminNovelsPage() {
                       <UnpublishNovelButton novelId={novel.id} novelTitle={novel.title} />
                     )}
                     <DeleteNovelButton novelId={novel.id} novelTitle={novel.title} />
+                    </div>
                   </td>
                 </tr>
                   )
