@@ -113,20 +113,20 @@ export default function NovelStatsClient({ novelId, novelStatus, chapters }: Nov
 
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-gray-100 overflow-x-auto -webkit-overflow-scrolling-touch">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'overview'
                 ? 'text-amber-600 border-b-2 border-amber-500'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            📖 章节阅读数据
+            📖 章节阅读
           </button>
           <button
             onClick={() => setActiveTab('comments')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'comments'
                 ? 'text-amber-600 border-b-2 border-amber-500'
                 : 'text-gray-500 hover:text-gray-700'
@@ -136,7 +136,7 @@ export default function NovelStatsClient({ novelId, novelStatus, chapters }: Nov
           </button>
           <button
             onClick={() => setActiveTab('ratings')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'ratings'
                 ? 'text-amber-600 border-b-2 border-amber-500'
                 : 'text-gray-500 hover:text-gray-700'
@@ -146,107 +146,169 @@ export default function NovelStatsClient({ novelId, novelStatus, chapters }: Nov
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {activeTab === 'overview' && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">章节</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">阅读人数</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chapters.map((chapter) => (
-                    <tr key={chapter.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm text-gray-600">第{chapter.chapter_number}章</td>
-                      <td className="py-3 px-4 text-sm text-gray-800">{chapter.title}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600 text-right">
-                        {readCounts[chapter.id] || 0}
-                      </td>
+            <div>
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">章节</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">阅读人数</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {chapters.map((chapter) => (
+                      <tr key={chapter.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-3 px-4 text-sm text-gray-600">第{chapter.chapter_number}章</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{chapter.title}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600 text-right">
+                          {readCounts[chapter.id] || 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Mobile card layout */}
+              <div className="sm:hidden divide-y divide-gray-50">
+                {chapters.map((chapter) => (
+                  <div key={chapter.id} className="py-3 flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-gray-400">第{chapter.chapter_number}章</div>
+                      <div className="text-sm text-gray-800 truncate">{chapter.title}</div>
+                    </div>
+                    <div className="ml-3 text-sm font-semibold text-blue-600 flex-shrink-0">
+                      {readCounts[chapter.id] || 0}
+                      <span className="text-xs text-gray-400 font-normal ml-0.5">阅读</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {activeTab === 'comments' && (
-            <div className="overflow-x-auto">
+            <div>
               {commentCounts.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <p>暂无评论数据</p>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">章节</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">评论数</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">章节</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">评论数</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commentCounts.map((cc) => (
+                          <tr key={cc.chapter_id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm text-gray-600">第{cc.chapter_number}章</td>
+                            <td className="py-3 px-4 text-sm text-gray-800">{cc.chapter_title}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600 text-right">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                cc.comment_count > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {cc.comment_count}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Mobile card layout */}
+                  <div className="sm:hidden divide-y divide-gray-50">
                     {commentCounts.map((cc) => (
-                      <tr key={cc.chapter_id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm text-gray-600">第{cc.chapter_number}章</td>
-                        <td className="py-3 px-4 text-sm text-gray-800">{cc.chapter_title}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600 text-right">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            cc.comment_count > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {cc.comment_count}
-                          </span>
-                        </td>
-                      </tr>
+                      <div key={cc.chapter_id} className="py-3 flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs text-gray-400">第{cc.chapter_number}章</div>
+                          <div className="text-sm text-gray-800 truncate">{cc.chapter_title}</div>
+                        </div>
+                        <span className={`ml-3 px-2 py-1 rounded-full text-xs flex-shrink-0 ${
+                          cc.comment_count > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {cc.comment_count} 评论
+                        </span>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
           )}
 
           {activeTab === 'ratings' && (
-            <div className="overflow-x-auto">
+            <div>
               {ratingOverview.length === 0 || totalRatings === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <p>暂无评分数据</p>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">章节</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">平均评分</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">评分人数</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">章节</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">平均评分</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">评分人数</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ratingOverview.map((ro) => (
+                          <tr key={ro.chapter_id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm text-gray-600">第{ro.chapter_number}章</td>
+                            <td className="py-3 px-4 text-sm text-gray-800">{ro.chapter_title}</td>
+                            <td className="py-3 px-4 text-sm text-right">
+                              <span className="text-amber-600 font-medium">
+                                {ro.avg_rating > 0 ? ro.avg_rating.toFixed(1) : '-'}
+                              </span>
+                              {ro.avg_rating > 0 && (
+                                <span className="text-amber-400 ml-1">⭐</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600 text-right">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                ro.total_ratings > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {ro.total_ratings}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Mobile card layout */}
+                  <div className="sm:hidden divide-y divide-gray-50">
                     {ratingOverview.map((ro) => (
-                      <tr key={ro.chapter_id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm text-gray-600">第{ro.chapter_number}章</td>
-                        <td className="py-3 px-4 text-sm text-gray-800">{ro.chapter_title}</td>
-                        <td className="py-3 px-4 text-sm text-right">
-                          <span className="text-amber-600 font-medium">
+                      <div key={ro.chapter_id} className="py-3 flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs text-gray-400">第{ro.chapter_number}章</div>
+                          <div className="text-sm text-gray-800 truncate">{ro.chapter_title}</div>
+                        </div>
+                        <div className="ml-3 text-right flex-shrink-0">
+                          <div className="text-sm font-semibold text-amber-600">
                             {ro.avg_rating > 0 ? ro.avg_rating.toFixed(1) : '-'}
-                          </span>
-                          {ro.avg_rating > 0 && (
-                            <span className="text-amber-400 ml-1">⭐</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-600 text-right">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            ro.total_ratings > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {ro.total_ratings}
-                          </span>
-                        </td>
-                      </tr>
+                            {ro.avg_rating > 0 && <span className="text-amber-400 ml-0.5">⭐</span>}
+                          </div>
+                          <div className="text-xs text-gray-400">{ro.total_ratings}人</div>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
           )}

@@ -48,7 +48,9 @@ export default async function AdminNovelsPage() {
       </div>
 
       {novels && novels.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div>
+          {/* Desktop table */}
+          <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -57,16 +59,13 @@ export default async function AdminNovelsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">章节数</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">发布</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">
-                  <span className="hidden lg:inline">阅读量</span>
-                  <span className="lg:hidden">读</span>
+                  阅读量
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">
-                  <span className="hidden lg:inline">评论数</span>
-                  <span className="lg:hidden">评</span>
+                  评论数
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">
-                  <span className="hidden lg:inline">催更</span>
-                  <span className="lg:hidden">催</span>
+                  催更
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">更新时间</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
@@ -147,6 +146,77 @@ export default async function AdminNovelsPage() {
                 })}
             </tbody>
           </table>
+          </div>
+
+          {/* Mobile card layout */}
+          <div className="sm:hidden space-y-3">
+            {novels.map((novel: any) => {
+              const stats = novelStats[novel.id] || { reads: 0, comments: 0, urges: 0 }
+              return (
+                <div key={novel.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-800 text-sm truncate">{novel.title}</h3>
+                      {novel.genre && <p className="text-xs text-gray-400 mt-0.5">{novel.genre}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                        novel.status === 'ongoing' ? 'bg-blue-100 text-blue-700' :
+                        novel.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {novel.status === 'ongoing' ? '连载中' : novel.status === 'completed' ? '已完结' : '暂停中'}
+                      </span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                        novel.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {novel.is_published ? '已发布' : '草稿'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 text-center">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-700">{novel.chapters?.[0]?.count || 0}</div>
+                      <div className="text-xs text-gray-400">章节</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-700">{stats.reads}</div>
+                      <div className="text-xs text-gray-400">阅读</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-700">{stats.comments}</div>
+                      <div className="text-xs text-gray-400">评论</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-700">{stats.urges}</div>
+                      <div className="text-xs text-gray-400">催更</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>{new Date(novel.updated_at).toLocaleDateString('zh-CN')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <Link href={`/admin/novels/${novel.id}`} className="px-3 py-1.5 text-xs bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100">
+                      ✏️ 编辑
+                    </Link>
+                    <Link href={`/admin/novels/${novel.id}/stats`} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">
+                      📊 数据
+                    </Link>
+                    <Link href={`/admin/novels/${novel.id}/comments`} className="px-3 py-1.5 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100">
+                      💬 留言
+                    </Link>
+                    <Link href={`/novel/${novel.id}`} className="px-3 py-1.5 text-xs bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100">
+                      预览
+                    </Link>
+                    {novel.is_published && (
+                      <UnpublishNovelButton novelId={novel.id} novelTitle={novel.title} />
+                    )}
+                    <DeleteNovelButton novelId={novel.id} novelTitle={novel.title} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">

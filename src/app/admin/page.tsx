@@ -146,7 +146,8 @@ export default async function AdminDashboard() {
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-800">书籍数据概览</h2>
           </div>
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
@@ -204,6 +205,58 @@ export default async function AdminDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Mobile card layout */}
+          <div className="sm:hidden divide-y divide-gray-50">
+            {novelStats.map((novel: any) => (
+              <div key={novel.id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-800 text-sm">{novel.title}</span>
+                  <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                    novel.is_published
+                      ? novel.status === 'completed'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-blue-100 text-blue-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {novel.is_published
+                      ? novel.status === 'ongoing' ? '连载中'
+                        : novel.status === 'completed' ? '已完结'
+                        : '暂停中'
+                      : '草稿'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-3 text-center">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700">{novel.readCount}</div>
+                    <div className="text-xs text-gray-400">阅读</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700">{novel.commentCount}</div>
+                    <div className="text-xs text-gray-400">评论</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700">{novel.urgingCount}</div>
+                    <div className="text-xs text-gray-400">催更</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-amber-600">{novel.avgRating} ★</div>
+                    <div className="text-xs text-gray-400">评分</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <Link href={`/admin/novels/${novel.id}/stats`} className="flex-1 text-center py-2 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                    📊 数据
+                  </Link>
+                  <Link href={`/admin/novels/${novel.id}/comments`} className="flex-1 text-center py-2 text-xs text-green-600 bg-green-50 rounded-lg hover:bg-green-100">
+                    💬 评论
+                  </Link>
+                  <Link href={`/admin/novels/${novel.id}`} className="flex-1 text-center py-2 text-xs text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100">
+                    ✏️ 编辑
+                  </Link>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

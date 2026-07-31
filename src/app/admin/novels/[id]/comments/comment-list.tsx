@@ -112,35 +112,35 @@ export default function AdminCommentList({ comments, novelId }: AdminCommentList
           key={comment.id}
           className={`bg-white rounded-xl shadow-sm border ${
             comment.is_private ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'
-          } p-5`}
+          } p-3 sm:p-5`}
         >
           <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold">
+            <div className="flex items-start space-x-2 sm:space-x-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
                 {comment.user_id ? comment.user_id.slice(0, 2).toUpperCase() : '匿'}
               </div>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-gray-800">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <span className="font-medium text-gray-800 text-sm">
                     读者
                   </span>
                   {comment.is_private && (
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+                    <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
                       仅作者可见
                     </span>
                   )}
                   {comment.selected_text && (
-                    <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
+                    <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
                       批注
                     </span>
                   )}
                 </div>
-                <div className="flex items-center space-x-3 mt-0.5 text-xs text-gray-400">
-                  <span>{formatTime(comment.created_at)}</span>
+                <div className="flex items-center gap-2 sm:gap-3 mt-0.5 text-xs text-gray-400 flex-wrap">
+                  <span className="whitespace-nowrap">{formatTime(comment.created_at)}</span>
                   {comment.chapter && (
                     <Link
                       href={`/novel/${novelId}/chapter/${comment.chapter_id}`}
-                      className="text-amber-600 hover:text-amber-700"
+                      className="text-amber-600 hover:text-amber-700 truncate"
                     >
                       第{comment.chapter.chapter_number}章 {comment.chapter.title}
                     </Link>
@@ -159,7 +159,7 @@ export default function AdminCommentList({ comments, novelId }: AdminCommentList
           <p className="mt-3 text-gray-700 text-sm leading-relaxed">{comment.content}</p>
 
                 {replyingTo === comment.id ? (
-              <div className="space-y-3">
+              <div className="mt-3 space-y-3">
                 <textarea
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
@@ -168,27 +168,27 @@ export default function AdminCommentList({ comments, novelId }: AdminCommentList
                   rows={3}
                   autoFocus
                 />
-                <div className="flex justify-end space-x-3">
+                <div className="flex justify-end gap-2 sm:gap-3">
                   <button
                     onClick={() => {
                       setReplyingTo(null)
                       setReplyContent('')
                     }}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                    className="px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
                   >
                     取消
                   </button>
                   <button
                     onClick={() => handleReply(comment.id, comment.chapter_id)}
                     disabled={submitting || !replyContent.trim()}
-                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 transition-all"
+                    className="px-4 sm:px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 transition-all"
                   >
                     {submitting ? '发送中...' : '回复'}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="mt-3 flex items-center gap-3">
                 <button
                   onClick={() => setReplyingTo(comment.id)}
                   className="text-sm text-amber-600 hover:text-amber-700 font-medium"
